@@ -1,0 +1,25 @@
+#data-table {
+  th, td {
+    text-align: center;
+    width: 20%;
+  }
+}
+
+.service-button-button {
+  width: 100px;
+}
+
+.user-table {
+}
+
+.button-with-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* space between button and tag */
+}
+
+.button-with-tag {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem; /* space between button and tag/input */
+}

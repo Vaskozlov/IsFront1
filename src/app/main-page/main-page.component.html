@@ -1,227 +1,303 @@
 <div class="main-page">
-    <div class="input-area">
-        <div id="box1"></div>
-        <div class="buttons-area">
-            <table>
-                <tr>
-                    <td class="button-with-tag">
-                        <p-button label="Get total weight" class="service-button"
-                                  (onClick)="calculateTotalWeight()"></p-button>
-                        <p-tag *ngIf="totalWeight !== null" value="Total: {{ totalWeight }}" severity="info"></p-tag>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="button-with-tag">
-                        <p-button label="Get min eyeColor" class="service-button"
-                                  (onClick)="getMinEyeColor()"></p-button>
-                        <p-tag *ngIf="minEyeColorId !== null" value="ID: {{ minEyeColorId }}" severity="info"></p-tag>
-                    </td>
-                </tr>
-                <tr>
-                    <td class="button-with-tag">
-                        <p-button label="Get below weight" class="service-button"
-                                  (onClick)="getBelowWeight()"></p-button>
-                        <p-inputNumber [(ngModel)]="weightThreshold" [min]="0" [max]="500" [showButtons]="true"
-                                       [step]="1" mode="decimal" placeholder="Weight"></p-inputNumber>
-                        <p-tag *ngIf="belowWeightCount !== null" value="{{ belowWeightCount }} persons"
-                               severity="info"></p-tag>
-                    </td>
-                </tr>
-              <tr>
-                <td>
-                  <p-button label="Add new person" class="check-button">
-                  </p-button>
-                </td>
-              </tr>
-            </table>
-        </div>
+  <div class="input-area">
+    <div id="box1"></div>
+    <div class="buttons-area">
+      <table>
+        <tr>
+          <td class="button-with-tag">
+            <p-button label="Get total weight" class="service-button"
+                      (onClick)="calculateTotalWeight()"></p-button>
+            <p-tag *ngIf="totalWeight !== null" value="Total: {{ totalWeight }}" severity="info"></p-tag>
+          </td>
+        </tr>
+        <tr>
+          <td class="button-with-tag">
+            <p-button label="Get min eyeColor" class="service-button"
+                      (onClick)="getMinEyeColor()"></p-button>
+            <p-tag *ngIf="minEyeColorId !== null" value="ID: {{ minEyeColorId }}" severity="info"></p-tag>
+          </td>
+        </tr>
+        <tr>
+          <td class="button-with-tag">
+            <p-button label="Get below weight" class="service-button"
+                      (onClick)="getBelowWeight()"></p-button>
+            <p-inputNumber [(ngModel)]="weightThreshold" [min]="0" [max]="500" [showButtons]="true"
+                           [step]="1" mode="decimal" placeholder="Weight"></p-inputNumber>
+            <p-tag *ngIf="belowWeightCount !== null" value="{{ belowWeightCount }} persons"
+                   severity="info"></p-tag>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p-button
+              label="Add new person"
+              class="check-button" (onClick)="showCreateDialog()"
+            >
+            </p-button>
+          </td>
+        </tr>
+      </table>
+    </div>
+  </div>
+
+  <div class="data-table">
+    <p-table [value]="personsStorage.persons"
+             [scrollable]="true"
+             editMode="cell"
+             class="user-table"
+             scrollHeight="flex"
+             (onEditComplete)="onEditComplete($event)">
+
+      <ng-template pTemplate="header">
+        <tr>
+          <th pSortableColumn="id">ID</th>
+          <th pSortableColumn="name">Name</th>
+          <th pSortableColumn="coordinates.x">Coordinates.x</th>
+          <th pSortableColumn="coordinates.y">Coordinates.y</th>
+          <th pSortableColumn="creationTime">CreationTime</th>
+          <th pSortableColumn="eyeColor">Eye color</th>
+          <th pSortableColumn="harColor">Hair color</th>
+          <th pSortableColumn="location.x">Location.x</th>
+          <th pSortableColumn="location.y">Location.y</th>
+          <th pSortableColumn="location.name">Location.name</th>
+          <th pSortableColumn="height">Height</th>
+          <th pSortableColumn="weight">Weight</th>
+          <th pSortableColumn="nationality">Nationality</th>
+        </tr>
+      </ng-template>
+
+      <ng-template pTemplate="body" let-person>
+        <tr>
+          <!-- ID (read-only) -->
+          <td>{{ person.id }}</td>
+
+          <!-- Name -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <input pInputText [(ngModel)]="person.name" (ngModelChange)="onNameChange(person)"/>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.name }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- Coordinates.x -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <input type="number" pInputText [(ngModel)]="person.coordinates.x"
+                       (ngModelChange)="onCoordinatesChange(person)"/>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.coordinates.x | number:'1.2-2' }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- Coordinates.y -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <input type="number" pInputText [(ngModel)]="person.coordinates.y"
+                       (ngModelChange)="onCoordinatesChange(person)"/>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.coordinates.y | number:'1.2-2' }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- CreationTime (read-only) -->
+          <td>{{ person.creationTime | date:'short' }}</td>
+
+          <!-- Eye Color -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <p-select [options]="colors"
+                          [(ngModel)]="person.eyeColor"
+                          (ngModelChange)="onEyeColorChange(person)"
+                          appendTo="body">
+                </p-select>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.eyeColor }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- Hair Color -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <p-select [options]="colors"
+                          [(ngModel)]="person.hairColor"
+                          (ngModelChange)="onHairColorChange(person)"
+                          appendTo="body">
+                </p-select>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.hairColor }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- Location.x -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <input type="number" pInputText [(ngModel)]="person.location.x"
+                       (ngModelChange)="onLocationChange(person)"/>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.location.x }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- Location.y -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <input type="number" pInputText [(ngModel)]="person.location.y"
+                       (ngModelChange)="onLocationChange(person)"/>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.location.y }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- Location.name -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <input pInputText [(ngModel)]="person.location.name"
+                       (ngModelChange)="onLocationChange(person)"/>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.location.name }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- Height -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <input type="number" pInputText [(ngModel)]="person.height"
+                       (ngModelChange)="onHeightChange(person)"/>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.height }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- Weight -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <input type="number" pInputText [(ngModel)]="person.weight"
+                       (ngModelChange)="onWeightChange(person)"/>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.weight }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+
+          <!-- Nationality -->
+          <td pEditableColumn>
+            <p-cellEditor>
+              <ng-template pTemplate="input">
+                <p-select [options]="countries"
+                          [(ngModel)]="person.nationality"
+                          (ngModelChange)="onNationalityChange(person)"
+                          appendTo="body">
+                </p-select>
+              </ng-template>
+              <ng-template pTemplate="output">
+                {{ person.nationality }}
+              </ng-template>
+            </p-cellEditor>
+          </td>
+        </tr>
+      </ng-template>
+    </p-table>
+  </div>
+  <!-- Create Person Dialog -->
+  <p-dialog header="Create New Person" [(visible)]="displayCreateDialog" [modal]="true" [closable]="true"
+            [style]="{width: '600px'}" >
+    <div class="p-fluid">
+      <!-- Name -->
+      <div class="p-field bottom-border">
+        <label for="name" class="right-border">Name</label>
+        <input id="name" type="text" pInputText [(ngModel)]="newPerson.name">
+      </div>
+
+      <!-- Coordinates -->
+      <div class="p-field bottom-border">
+        <label for="coordX" class="right-border">Coordinates X</label>
+        <input id="coordX" type="number" pInputText [(ngModel)]="newPerson.coordinates.x">
+      </div>
+      <div class="p-field bottom-border">
+        <label for="coordY" class="right-border">Coordinates Y</label>
+        <input id="coordY" type="number" pInputText [(ngModel)]="newPerson.coordinates.y">
+      </div>
+
+      <!-- Eye Color -->
+      <div class="p-field bottom-border">
+        <label for="eyeColor" class="right-border">Eye Color</label>
+        <p-select [options]="colors" [(ngModel)]="newPerson.eyeColor" placeholder="Select eye color" appendTo="body"></p-select>
+      </div>
+
+      <!-- Hair Color -->
+      <div class="p-field bottom-border">
+        <label for="hairColor" class="right-border">Hair Color</label>
+        <p-select [options]="colors" [(ngModel)]="newPerson.hairColor" placeholder="Select hair color" appendTo="body"></p-select>
+      </div>
+
+      <!-- Location -->
+      <div class="p-field bottom-border">
+        <label for="locX" class="right-border">Location X</label>
+        <input id="locX" type="number" pInputText [(ngModel)]="newPerson.location.x">
+      </div>
+      <div class="p-field bottom-border">
+        <label for="locY" class="right-border">Location Y</label>
+        <input id="locY" type="number" pInputText [(ngModel)]="newPerson.location.y">
+      </div>
+      <div class="p-field bottom-border">
+        <label for="locName" class="right-border">Location Name</label>
+        <input id="locName" type="text" pInputText [(ngModel)]="newPerson.location.name">
+      </div>
+
+      <!-- Height -->
+      <div class="p-field bottom-border">
+        <label for="height" class="right-border">Height</label>
+        <input id="height" type="number" pInputText [(ngModel)]="newPerson.height">
+      </div>
+
+      <!-- Weight -->
+      <div class="p-field bottom-border">
+        <label for="weight" class="right-border">Weight</label>
+        <input id="weight" type="number" pInputText [(ngModel)]="newPerson.weight">
+      </div>
+
+      <!-- Nationality -->
+      <div class="p-field bottom-border">
+        <label for="nationality" class="right-border">Nationality</label>
+        <p-select [options]="countries" [(ngModel)]="newPerson.nationality" placeholder="Select nationality" appendTo="body"></p-select>
+      </div>
     </div>
 
-    <div class="data-table">
-        <p-table [value]="personsStorage.persons"
-                 [scrollable]="true"
-                 editMode="cell"
-                 class="user-table"
-                 scrollHeight="flex">
-
-            <ng-template pTemplate="header">
-                <tr>
-                    <th pSortableColumn="id">ID</th>
-                    <th pSortableColumn="name">Name</th>
-                    <th pSortableColumn="coordinates.x">Coordinates.x</th>
-                    <th pSortableColumn="coordinates.y">Coordinates.y</th>
-                    <th pSortableColumn="creationTime">CreationTime</th>
-                    <th pSortableColumn="eyeColor">Eye color</th>
-                    <th pSortableColumn="harColor">Hair color</th>
-                    <th pSortableColumn="location.x">Location.x</th>
-                    <th pSortableColumn="location.y">Location.y</th>
-                    <th pSortableColumn="location.name">Location.name</th>
-                    <th pSortableColumn="height">Height</th>
-                    <th pSortableColumn="weight">Weight</th>
-                    <th pSortableColumn="nationality">Nationality</th>
-                </tr>
-            </ng-template>
-
-            <ng-template pTemplate="body" let-person>
-                <tr>
-                    <!-- ID (read-only) -->
-                    <td>{{ person.id }}</td>
-
-                    <!-- Name -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <input pInputText [(ngModel)]="person.name" (ngModelChange)="onNameChange(person)"/>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.name }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- Coordinates.x -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <input type="number" pInputText [(ngModel)]="person.coordinates.x"
-                                       (ngModelChange)="onCoordinatesChange(person)"/>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.coordinates.x | number:'1.2-2' }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- Coordinates.y -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <input type="number" pInputText [(ngModel)]="person.coordinates.y"
-                                       (ngModelChange)="onCoordinatesChange(person)"/>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.coordinates.y | number:'1.2-2' }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- CreationTime (read-only) -->
-                    <td>{{ person.creationTime | date:'short' }}</td>
-
-                    <!-- Eye Color -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <p-select [options]="colors"
-                                          [(ngModel)]="person.eyeColor"
-                                          (ngModelChange)="onEyeColorChange(person)"
-                                          appendTo="body">
-                                </p-select>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.eyeColor }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- Hair Color -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <p-select [options]="colors"
-                                          [(ngModel)]="person.hairColor"
-                                          (ngModelChange)="onHairColorChange(person)"
-                                          appendTo="body">
-                                </p-select>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.hairColor }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- Location.x -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <input type="number" pInputText [(ngModel)]="person.location.x"
-                                       (ngModelChange)="onLocationChange(person)"/>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.location.x }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- Location.y -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <input type="number" pInputText [(ngModel)]="person.location.y"
-                                       (ngModelChange)="onLocationChange(person)"/>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.location.y }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- Location.name -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <input pInputText [(ngModel)]="person.location.name"
-                                       (ngModelChange)="onLocationChange(person)"/>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.location.name }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- Height -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <input type="number" pInputText [(ngModel)]="person.height"
-                                       (ngModelChange)="onHeightChange(person)"/>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.height }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- Weight -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <input type="number" pInputText [(ngModel)]="person.weight"
-                                       (ngModelChange)="onWeightChange(person)"/>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.weight }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-
-                    <!-- Nationality -->
-                    <td pEditableColumn>
-                        <p-cellEditor>
-                            <ng-template pTemplate="input">
-                                <p-select [options]="countries"
-                                          [(ngModel)]="person.nationality"
-                                          (ngModelChange)="onNationalityChange(person)"
-                                          appendTo="body">
-                                </p-select>
-                            </ng-template>
-                            <ng-template pTemplate="output">
-                                {{ person.nationality }}
-                            </ng-template>
-                        </p-cellEditor>
-                    </td>
-                </tr>
-            </ng-template>
-        </p-table>
-    </div>
+    <ng-template pTemplate="footer">
+      <p-button label="Cancel" icon="pi pi-times" (onClick)="displayCreateDialog=false"
+                class="p-button-text"></p-button>
+      <p-button label="Create" icon="pi pi-check" (onClick)="createPerson()"
+                [disabled]="!isCreateFormValid()"></p-button>
+    </ng-template>
+  </p-dialog>
 </div>

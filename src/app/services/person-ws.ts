@@ -26,7 +26,7 @@ export class PersonWs implements OnDestroy
     this.ws.onmessage = (event) => {
       try {
         const data: Person = JSON.parse(event.data);
-        const person: Person = ({...data, creationTime: new Date(data.creationTime)});
+        const person: Person = ({...data, creationTime: new Date(data.creationTime!)});
         this.updatesSubject.next(person)
       } catch (e) {
 

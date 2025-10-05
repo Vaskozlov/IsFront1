@@ -1,11 +1,11 @@
 export interface Coordinates {
-  id: number,
+  id: number | null,
   x: number;
   y: number;
 }
 
 export interface Location {
-  id: number,
+  id: number | null,
   x: number;
   y: number;
   name: string;
@@ -28,13 +28,13 @@ export enum Country {
 }
 
 export interface Person {
-  id: number;
+  id: number | null;
   name: string;
-  coordinates: Coordinates;
-  creationTime: Date;
+  coordinates: Coordinates | null;
+  creationTime: Date | null;
   eyeColor: Color;
   hairColor: Color;
-  location: Location;
+  location: Location | null;
   height: number;
   weight: number;
   nationality?: Country;

@@ -18,7 +18,7 @@ export class PersonsStorage {
     })
   }
 
-  private onPersonUpdate(updatedPerson: Person): void {
+  public onPersonUpdate(updatedPerson: Person): void {
     const index = this.persons.findIndex(p => p.id === updatedPerson.id);
 
     if (index > -1) {

@@ -18,8 +18,11 @@
   gap: 0.5rem; /* space between button and tag */
 }
 
-.button-with-tag {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem; /* space between button and tag/input */
+.right-border {
+  margin-right: 8px;
 }
+
+.bottom-border {
+  margin-bottom: 4px;
+}
+

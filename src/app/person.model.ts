@@ -11,6 +11,11 @@ export interface Location {
   name: string;
 }
 
+export enum PersonState {
+  UPDATED = 'UPDATED',
+  DELETED = 'DELETED'
+}
+
 export enum Color {
   RED = 'RED',
   BLACK = 'BLACK',
@@ -38,4 +43,9 @@ export interface Person {
   height: number;
   weight: number;
   nationality?: Country;
+}
+
+export interface BroadcastMessage {
+  state: PersonState;
+  person: Person;
 }

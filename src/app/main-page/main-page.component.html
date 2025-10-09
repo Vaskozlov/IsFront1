@@ -31,9 +31,7 @@
           <td>
             <p-button
               label="Add new person"
-              class="check-button" (onClick)="showCreateDialog()"
-            >
-            </p-button>
+              class="check-button" (onClick)="showCreateDialog()"></p-button>
           </td>
         </tr>
       </table>
@@ -41,35 +39,64 @@
   </div>
 
   <div class="data-table">
-    <p-table [value]="personsStorage.persons"
-             [scrollable]="true"
-             editMode="cell"
-             class="user-table"
-             scrollHeight="flex"
-             (onEditComplete)="onEditComplete($event)">
+    <p-table
+      #dt
+      [value]="applyFilter()"
+      [scrollable]="true"
+      editMode="cell"
+      class="user-table"
+      scrollHeight="flex"
+      (onEditComplete)="onEditComplete($event)"
+      [reorderableColumns]="true"
+      [globalFilterFields]="['id', 'name']"
+    >
+      <ng-template pTemplate="caption">
+        <div class="flex justify-content-between">
+          <input
+            type="text"
+            pInputText
+            placeholder="Filter"
+            [(ngModel)]="filterValue"
+          />
+          <p-select [options]="filters"
+                    [(ngModel)]="columnFilter"
+                    appendTo="body">
+          </p-select>
+          <p>
+            Showing {{
+              (
+                personsStorage.persons.length > 0
+                  ? applyFilter().length / personsStorage.persons.length * 100
+                  : 100
+              ) | number:'1.2-2'
+            }}
+            % of persons
+          </p>
+        </div>
+      </ng-template>
 
       <ng-template pTemplate="header">
         <tr>
-          <th pSortableColumn="id">ID</th>
-          <th pSortableColumn="name">Name</th>
-          <th pSortableColumn="coordinates.x">Coordinates.x</th>
-          <th pSortableColumn="coordinates.y">Coordinates.y</th>
-          <th pSortableColumn="creationTime">CreationTime</th>
-          <th pSortableColumn="eyeColor">Eye color</th>
-          <th pSortableColumn="harColor">Hair color</th>
-          <th pSortableColumn="location.x">Location.x</th>
-          <th pSortableColumn="location.y">Location.y</th>
-          <th pSortableColumn="location.name">Location.name</th>
-          <th pSortableColumn="height">Height</th>
-          <th pSortableColumn="weight">Weight</th>
-          <th pSortableColumn="nationality">Nationality</th>
+          <th pReorderableColumn pSortableColumn="id">ID</th>
+          <th pReorderableColumn pSortableColumn="name">Name</th>
+          <th pReorderableColumn pSortableColumn="coordinates.x">Coordinates.x</th>
+          <th pReorderableColumn pSortableColumn="coordinates.y">Coordinates.y</th>
+          <th pReorderableColumn pSortableColumn="creationTime">CreationTime</th>
+          <th pReorderableColumn pSortableColumn="eyeColor">Eye color</th>
+          <th pReorderableColumn pSortableColumn="harColor">Hair color</th>
+          <th pReorderableColumn pSortableColumn="location.x">Location.x</th>
+          <th pReorderableColumn pSortableColumn="location.y">Location.y</th>
+          <th pReorderableColumn pSortableColumn="location.name">Location.name</th>
+          <th pReorderableColumn pSortableColumn="height">Height</th>
+          <th pReorderableColumn pSortableColumn="weight">Weight</th>
+          <th pReorderableColumn pSortableColumn="nationality">Nationality</th>
         </tr>
       </ng-template>
 
       <ng-template pTemplate="body" let-person>
         <tr>
           <!-- ID (read-only) -->
-          <td>{{ person.id }}</td>
+          <td (click)="displayCreateDialog = true; dialogInUpdateMode = true; newPerson = person;">{{ person.id }}</td>
 
           <!-- Name -->
           <td pEditableColumn>
@@ -229,8 +256,12 @@
     </p-table>
   </div>
   <!-- Create Person Dialog -->
-  <p-dialog header="Create New Person" [(visible)]="displayCreateDialog" [modal]="true" [closable]="true"
-            [style]="{width: '600px'}" >
+  <p-dialog
+    [header]="dialogInUpdateMode ? 'Update Person' : 'Create New Person'"
+    [(visible)]="displayCreateDialog"
+    [modal]="true"
+    [closable]="true"
+    [style]="{width: '80vw'}">
     <div class="p-fluid">
       <!-- Name -->
       <div class="p-field bottom-border">
@@ -239,6 +270,10 @@
       </div>
 
       <!-- Coordinates -->
+      <div class="p-field bottom-border">
+        <label for="coordId" class="right-border">Coordinates ID</label>
+        <input id="coordId" type="number" pInputText [(ngModel)]="newPerson.coordinates.id">
+      </div>
       <div class="p-field bottom-border">
         <label for="coordX" class="right-border">Coordinates X</label>
         <input id="coordX" type="number" pInputText [(ngModel)]="newPerson.coordinates.x">
@@ -251,16 +286,21 @@
       <!-- Eye Color -->
       <div class="p-field bottom-border">
         <label for="eyeColor" class="right-border">Eye Color</label>
-        <p-select [options]="colors" [(ngModel)]="newPerson.eyeColor" placeholder="Select eye color" appendTo="body"></p-select>
+        <p-select [options]="colors" [(ngModel)]="newPerson.eyeColor" placeholder="Select eye color"
+                  appendTo="body"></p-select>
       </div>
 
       <!-- Hair Color -->
       <div class="p-field bottom-border">
         <label for="hairColor" class="right-border">Hair Color</label>
-        <p-select [options]="colors" [(ngModel)]="newPerson.hairColor" placeholder="Select hair color" appendTo="body"></p-select>
+        <p-select [options]="colors" [(ngModel)]="newPerson.hairColor" placeholder="Select hair color"
+                  appendTo="body"></p-select>
       </div>
 
-      <!-- Location -->
+      <div class="p-field bottom-border">
+        <label for="locId" class="right-border">Location ID</label>
+        <input id="locId" type="number" pInputText [(ngModel)]="newPerson.location.id">
+      </div>
       <div class="p-field bottom-border">
         <label for="locX" class="right-border">Location X</label>
         <input id="locX" type="number" pInputText [(ngModel)]="newPerson.location.x">
@@ -289,15 +329,137 @@
       <!-- Nationality -->
       <div class="p-field bottom-border">
         <label for="nationality" class="right-border">Nationality</label>
-        <p-select [options]="countries" [(ngModel)]="newPerson.nationality" placeholder="Select nationality" appendTo="body"></p-select>
+        <p-select [options]="countries" [(ngModel)]="newPerson.nationality" placeholder="Select nationality"
+                  appendTo="body"></p-select>
       </div>
+
+      <p-message *ngIf="getReasonForInvalidForm() != null" severity="error"
+                 [text]="getReasonForInvalidForm()!"></p-message>
+      <p-message *ngIf="errorMessageFromServer.length > 0" severity="error"
+                 [text]="errorMessageFromServer"></p-message>
     </div>
 
     <ng-template pTemplate="footer">
-      <p-button label="Cancel" icon="pi pi-times" (onClick)="displayCreateDialog=false"
+      <div>
+        <p-button *ngIf="dialogInUpdateMode"
+                  label="Delete"
+                  icon="pi pi-times"
+                  (onClick)="onPersonDelete(newPerson)"
+                  class="p-button-text"
+        ></p-button>
+      </div>
+
+      <p-button
+        label="Choose coordinates"
+        icon="pi pi-times"
+        (onClick)="displayChooseCoordinates=true"
+        class="p-button-text"
+      ></p-button>
+
+      <p-button
+        label="Choose location"
+        icon="pi pi-times"
+        (onClick)="displayChooseLocation=true"
+        class="p-button-text"
+      ></p-button>
+
+      <p-button
+        label="Cancel"
+        icon="pi pi-times"
+        (onClick)="displayCreateDialog=false"
+        class="p-button-text"
+      ></p-button>
+
+      <p-button
+        [label]="dialogInUpdateMode ? 'Update' : 'Create'"
+        icon="pi pi-check"
+        (onClick)="createPerson()"
+        [disabled]="!isCreateFormValid()"
+      ></p-button>
+    </ng-template>
+  </p-dialog>
+
+  <p-dialog
+    header="Choose location"
+    [(visible)]="displayChooseLocation"
+    [modal]="true"
+    [closable]="true"
+    [style]="{width: '75vw'}">
+    <div class="data-table">
+      <p-table [value]="personsStorage.persons"
+               [scrollable]="true"
+               editMode="cell"
+               class="user-table"
+               scrollHeight="flex"
+               dataKey="location.id"
+               selectionMode="single">
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="id">ID</th>
+            <th pSortableColumn="name">Name</th>
+            <th pSortableColumn="location.id">Location.id</th>
+            <th pSortableColumn="location.x">Location.x</th>
+            <th pSortableColumn="location.y">Location.y</th>
+            <th pSortableColumn="location.name">Location.name</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-person>
+          <tr (click)="onLocationSelected(person)">
+            <td>{{ person.id }}</td>
+            <td>{{ person.name }}</td>
+            <td>{{ person.location.id }}</td>
+            <td>{{ person.location.x }}</td>
+            <td>{{ person.location.y }}</td>
+            <td>{{ person.location.name }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button label="Cancel" icon="pi pi-times" (onClick)="displayChooseLocation=false"
                 class="p-button-text"></p-button>
-      <p-button label="Create" icon="pi pi-check" (onClick)="createPerson()"
-                [disabled]="!isCreateFormValid()"></p-button>
+    </ng-template>
+  </p-dialog>
+
+  <p-dialog
+    header="Choose coordinates"
+    [(visible)]="displayChooseCoordinates"
+    [modal]="true"
+    [closable]="true"
+    [style]="{width: '75vw'}">
+    <div class="data-table">
+      <p-table [value]="personsStorage.persons"
+               [scrollable]="true"
+               editMode="cell"
+               class="user-table"
+               scrollHeight="flex"
+               dataKey="location.id"
+               selectionMode="single">
+
+        <ng-template pTemplate="header">
+          <tr>
+            <th pSortableColumn="id">ID</th>
+            <th pSortableColumn="name">Name</th>
+            <th pSortableColumn="coordinates.id">Coordinates.id</th>
+            <th pSortableColumn="coordinates.x">Coordinates.x</th>
+            <th pSortableColumn="coordinates.y">Coordinates.y</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-person>
+          <tr (click)="onCoordinatesSelected(person)">
+            <td>{{ person.id }}</td>
+            <td>{{ person.name }}</td>
+            <td>{{ person.coordinates.id }}</td>
+            <td>{{ person.coordinates.x }}</td>
+            <td>{{ person.coordinates.y }}</td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button label="Cancel" icon="pi pi-times" (onClick)="displayChooseCoordinates=false"
+                class="p-button-text"></p-button>
     </ng-template>
   </p-dialog>
 </div>

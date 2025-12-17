@@ -9,7 +9,7 @@ import {Injectable} from '@angular/core';
 export class PersonsStorage {
   public persons: Person[] = new Array<Person>();
 
-  constructor(private personWs: PersonWs) {
+  constructor(public personWs: PersonWs) {
     this.personWs.updates$.subscribe(p => this.onPersonUpdate(p))
     this.personWs.delete$.subscribe(id => this.onPersonDeleted(id));
 
@@ -30,6 +30,7 @@ export class PersonsStorage {
 
   public onPersonUpdate(updatedPerson: Person): void {
     const index = this.persons.findIndex(p => p.id === updatedPerson.id);
+    console.log('updated at ' + index)
 
     if (index > -1) {
       this.persons[index] = updatedPerson;

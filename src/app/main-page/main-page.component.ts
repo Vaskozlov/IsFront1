@@ -1,22 +1,27 @@
-import {AfterViewInit, Component, OnInit} from '@angular/core';
+import {AfterViewInit, ChangeDetectorRef, Component, OnInit, ViewChild} from '@angular/core';
 import {CommonModule} from '@angular/common';
 import {InputTextModule} from 'primeng/inputtext';
 import {ButtonModule} from 'primeng/button';
 import {MessageModule} from 'primeng/message';
 import {FormsModule, ReactiveFormsModule} from '@angular/forms';
-import {TableModule} from 'primeng/table';
+import {Table, TableModule} from 'primeng/table';
 import {CheckboxModule} from 'primeng/checkbox';
 import {Router} from '@angular/router';
 import {PersonsStorage} from "../services/persons-storage";
-import {Color, Country, Person} from "../person.model";
+import {Color, Country, Operation, OperationStatus, OperationType, Person} from "../person.model";
 import {DropdownModule} from "primeng/dropdown";
 import {Select} from "primeng/select";
 import {Tag} from "primeng/tag";
 import {InputNumber} from "primeng/inputnumber";
 import {Dialog} from 'primeng/dialog';
+import * as Papa from 'papaparse';
 import {updatePerson} from '../rest/update-persons';
-import {savePerson} from '../rest/save-person';
+import {savePerson, savePersons} from '../rest/save-person';
 import {deletePerson} from '../rest/delete-person';
+import {MessageService} from 'primeng/api';
+import {ToastModule} from 'primeng/toast';
+import {getOperations} from '../rest/get-persons';
+import {apiBaseUrl} from '../rest/query';
 
 export enum ColumnFilter {
   NONE = "NONE",
@@ -50,12 +55,16 @@ export enum ColumnFilter {
     Select,
     Tag,
     InputNumber,
-    Dialog
+    Dialog,
+    ToastModule
   ],
   templateUrl: 'main-page.component.html',
-  styleUrl: './main-page.component.scss'
+  styleUrl: './main-page.component.scss',
+  providers: [MessageService]
 })
 export class MainPageComponent implements OnInit, AfterViewInit {
+  @ViewChild('dt') dt!: Table;
+
   colors = Object.values(Color).map(c => ({label: c, value: c}));
   countries = Object.values(Country).map(c => ({label: c, value: c}));
   filters = Object.values(ColumnFilter).map(c => ({label: c, value: c}));
@@ -75,7 +84,11 @@ export class MainPageComponent implements OnInit, AfterViewInit {
   columnFilter = ColumnFilter.NONE
   filterValue = ""
 
-  constructor(private router: Router, public personsStorage: PersonsStorage) {
+  displayOperationsDialog = false;
+  operations: Operation[] = [];
+
+
+  constructor(private router: Router, public personsStorage: PersonsStorage, private cdr: ChangeDetectorRef, private messageService: MessageService) {
   }
 
   async ngOnInit() {
@@ -92,17 +105,16 @@ export class MainPageComponent implements OnInit, AfterViewInit {
 
   applyFilter() {
     if (this.columnFilter === ColumnFilter.NONE) {
-      return this.personsStorage.persons
+      return [...this.personsStorage.persons];
     }
-
-    return this.personsStorage.persons.filter(p => {
-      const value = this.getNested(p, this.columnFilter)
-      return value == this.filterValue
-    })
+    return [...this.personsStorage.persons].filter(p => {
+      const value = this.getNested(p, this.columnFilter);
+      return value == this.filterValue;
+    });
   }
 
   onPersonDelete(person: Person) {
-    this.finishForm(deletePerson({...person, creationTime: null}))
+    this.finishForm(deletePerson({...person}))
   }
 
   onNameChange(person: any) {
@@ -164,7 +176,6 @@ export class MainPageComponent implements OnInit, AfterViewInit {
   }
 
   onEditComplete(_: any) {
-    console.log("Edit complete")
     if (this.pendingUpdate != null) {
       this.pendingUpdate()
       this.pendingUpdate = null
@@ -278,6 +289,14 @@ export class MainPageComponent implements OnInit, AfterViewInit {
       return "Location name too long"
     }
 
+    if (this.newPerson.coordinates.x < 0 || this.newPerson.coordinates.x >= 360) {
+      return "Coordinate.x must be between 0 and 360";
+    }
+
+    if (this.newPerson.coordinates.y < 0 || this.newPerson.coordinates.y >= 180) {
+      return "Coordinate.y must be between 0 and 180";
+    }
+
     if (this.newPerson.height == null || this.newPerson.height <= 0) {
       return "Height must be positive"
     }
@@ -313,4 +332,172 @@ export class MainPageComponent implements OnInit, AfterViewInit {
       this.errorMessageFromServer = e.value
     })
   }
+
+  triggerCsvUpload() {
+    document.getElementById('csvUpload')?.click();
+  }
+
+  onCsvSelect(event: any) {
+    const file = event.target.files[0];
+    if (file) {
+      this.parseCsv(file)
+        .then((persons: Person[]) => {
+          this.savePersons(persons)
+            .then(r => r.json())
+            .catch(r => this.showErrorNotification(
+              `Failed to save persons`))
+            .then(json => {
+              this.showSuccessNotification(
+                `Successfully added ${json["changes"]} persons`)
+            });
+        })
+        .catch(error => {
+          this.showErrorNotification(
+            `Error parsing CSV: ${error}`)
+        });
+    }
+  }
+
+  private parseCsv(file: File): Promise<Person[]> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        const csvText = e.target.result;
+        Papa.parse(csvText, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results: any) => {
+            try {
+              const persons: Person[] = results.data.map((row: any) => this.mapRowToPerson(row));
+              resolve(persons);
+            } catch (error) {
+              reject(error);
+            }
+          },
+          error: (error: any) => reject(error),
+        });
+      };
+      reader.onerror = (error) => reject(error);
+      reader.readAsText(file);
+    });
+  }
+
+  private mapRowToPerson(row: any): Person {
+    const coordinates = {
+      id: row['coordinates_id'] ? parseInt(row['coordinates_id'], 10) : null,
+      x: parseFloat(row['coordinates_x']),
+      y: parseFloat(row['coordinates_y']),
+    };
+
+    const location = {
+      id: row['location_id'] ? parseInt(row['location_id'], 10) : null,
+      x: parseFloat(row['location_x']),
+      y: parseFloat(row['location_y']),
+      name: row['location_name'],
+    };
+
+    const eyeColor = this.mapToColor(row['eyeColor']);
+    const hairColor = this.mapToColor(row['hairColor']);
+    const nationality = row['nationality'] ? this.mapToCountry(row['nationality']) : undefined;
+
+    return {
+      id: null,
+      name: row['name'],
+      coordinates,
+      creationTime: null,
+      eyeColor,
+      hairColor,
+      location,
+      height: parseFloat(row['height']),
+      weight: parseFloat(row['weight']),
+      nationality,
+    };
+  }
+
+  private mapToColor(value: string): Color {
+    const upperValue = value.toUpperCase();
+    if (Object.values(Color).includes(upperValue as Color)) {
+      return upperValue as Color;
+    }
+    throw new Error(`Invalid Color value: ${value}`);
+  }
+
+  private mapToCountry(value: string): Country {
+    const upperValue = value.toUpperCase();
+    if (Object.values(Country).includes(upperValue as Country)) {
+      return upperValue as Country;
+    }
+    throw new Error(`Invalid Country value: ${value}`);
+  }
+
+  private async savePersons(persons: Person[]) {
+    try {
+      return await savePersons(persons)
+    } catch (error) {
+      this.personsStorage.fullUpdate();
+      throw Error;
+    }
+  }
+
+  showSuccessNotification(message: string) {
+    this.messageService.add({
+      severity: 'success',
+      summary: 'Success',
+      detail: message,
+      life: 5000
+    });
+  }
+
+  showErrorNotification(message: string) {
+    this.messageService.add({
+      severity: 'error',
+      summary: 'Error',
+      detail: message,
+      life: 5000
+    });
+  }
+
+  async showOperations() {
+    try {
+      this.operations = await getOperations('vaskozlov');
+      this.displayOperationsDialog = true;
+    } catch (error) {
+      this.showErrorNotification('Failed to load operations');
+      console.error(error);
+    }
+  }
+
+  downloadFile(objectName: string | undefined) {
+    if (!objectName) {
+      return;
+    }
+
+    fetch(`${apiBaseUrl}/download?objectName=${objectName}`, {
+      method: 'GET',
+      mode: 'cors',
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Failed to download');
+        }
+        return response.blob();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = objectName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      })
+      .catch(error => {
+        console.error('Download failed', error);
+        this.showErrorNotification('Failed to download file');
+      });
+  }
+
+  protected readonly OperationType = OperationType;
+  protected readonly OperationStatus = OperationStatus;
 }

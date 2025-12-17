@@ -1,5 +1,6 @@
 <div class="main-page">
   <div class="input-area">
+    <p-toast></p-toast>
     <div id="box1"></div>
     <div class="buttons-area">
       <table>
@@ -7,7 +8,8 @@
           <td class="button-with-tag">
             <p-button label="Get total weight" class="service-button"
                       (onClick)="calculateTotalWeight()"></p-button>
-            <p-tag *ngIf="totalWeight !== null" value="Total: {{ totalWeight }}" severity="info"></p-tag>
+            <p-tag *ngIf="totalWeight !== null" value="Total: {{ totalWeight | number:'1.2-2' }}"
+                   severity="info"></p-tag>
           </td>
         </tr>
         <tr>
@@ -32,6 +34,17 @@
             <p-button
               label="Add new person"
               class="check-button" (onClick)="showCreateDialog()"></p-button>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <input type="file" accept=".csv" id="csvUpload" (change)="onCsvSelect($event)" style="display: none;">
+            <p-button label="Upload CSV" (onClick)="triggerCsvUpload()" class="service-button"></p-button>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <p-button label="Show Operations" (onClick)="showOperations()" class="service-button"></p-button>
           </td>
         </tr>
       </table>
@@ -83,7 +96,7 @@
           <th pReorderableColumn pSortableColumn="coordinates.y">Coordinates.y</th>
           <th pReorderableColumn pSortableColumn="creationTime">CreationTime</th>
           <th pReorderableColumn pSortableColumn="eyeColor">Eye color</th>
-          <th pReorderableColumn pSortableColumn="harColor">Hair color</th>
+          <th pReorderableColumn pSortableColumn="hairColor">Hair color</th>
           <th pReorderableColumn pSortableColumn="location.x">Location.x</th>
           <th pReorderableColumn pSortableColumn="location.y">Location.y</th>
           <th pReorderableColumn pSortableColumn="location.name">Location.name</th>
@@ -114,11 +127,11 @@
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
-                <input type="number" pInputText [(ngModel)]="person.coordinates.x"
-                       (ngModelChange)="onCoordinatesChange(person)"/>
+                <input type="number" pInputText [ngModel]="person.coordinates.x"
+                       (ngModelChange)="person.coordinates.x = $event; onCoordinatesChange(person)"/>
               </ng-template>
               <ng-template pTemplate="output">
-                {{ person.coordinates.x | number:'1.2-2' }}
+                {{ person.coordinates.x }}
               </ng-template>
             </p-cellEditor>
           </td>
@@ -127,8 +140,8 @@
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
-                <input type="number" pInputText [(ngModel)]="person.coordinates.y"
-                       (ngModelChange)="onCoordinatesChange(person)"/>
+                <input type="number" pInputText [ngModel]="person.coordinates.y"
+                       (ngModelChange)="person.coordinates.y = $event; onCoordinatesChange(person)"/>
               </ng-template>
               <ng-template pTemplate="output">
                 {{ person.coordinates.y | number:'1.2-2' }}
@@ -136,10 +149,8 @@
             </p-cellEditor>
           </td>
 
-          <!-- CreationTime (read-only) -->
           <td>{{ person.creationTime | date:'short' }}</td>
 
-          <!-- Eye Color -->
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
@@ -155,7 +166,6 @@
             </p-cellEditor>
           </td>
 
-          <!-- Hair Color -->
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
@@ -171,12 +181,11 @@
             </p-cellEditor>
           </td>
 
-          <!-- Location.x -->
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
-                <input type="number" pInputText [(ngModel)]="person.location.x"
-                       (ngModelChange)="onLocationChange(person)"/>
+                <input type="number" pInputText [ngModel]="person.location.x"
+                       (ngModelChange)="person.location.x = $event; onLocationChange(person)"/>
               </ng-template>
               <ng-template pTemplate="output">
                 {{ person.location.x }}
@@ -184,12 +193,11 @@
             </p-cellEditor>
           </td>
 
-          <!-- Location.y -->
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
-                <input type="number" pInputText [(ngModel)]="person.location.y"
-                       (ngModelChange)="onLocationChange(person)"/>
+                <input type="number" pInputText [ngModel]="person.location.y"
+                       (ngModelChange)="person.location.y = $event; onLocationChange(person)"/>
               </ng-template>
               <ng-template pTemplate="output">
                 {{ person.location.y }}
@@ -197,12 +205,11 @@
             </p-cellEditor>
           </td>
 
-          <!-- Location.name -->
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
-                <input pInputText [(ngModel)]="person.location.name"
-                       (ngModelChange)="onLocationChange(person)"/>
+                <input pInputText [ngModel]="person.location.name"
+                       (ngModelChange)="person.location.name = $event; onLocationChange(person)"/>
               </ng-template>
               <ng-template pTemplate="output">
                 {{ person.location.name }}
@@ -210,7 +217,6 @@
             </p-cellEditor>
           </td>
 
-          <!-- Height -->
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
@@ -223,7 +229,6 @@
             </p-cellEditor>
           </td>
 
-          <!-- Weight -->
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
@@ -236,7 +241,6 @@
             </p-cellEditor>
           </td>
 
-          <!-- Nationality -->
           <td pEditableColumn>
             <p-cellEditor>
               <ng-template pTemplate="input">
@@ -255,7 +259,7 @@
       </ng-template>
     </p-table>
   </div>
-  <!-- Create Person Dialog -->
+
   <p-dialog
     [header]="dialogInUpdateMode ? 'Update Person' : 'Create New Person'"
     [(visible)]="displayCreateDialog"
@@ -263,34 +267,33 @@
     [closable]="true"
     [style]="{width: '80vw'}">
     <div class="p-fluid">
-      <!-- Name -->
       <div class="p-field bottom-border">
         <label for="name" class="right-border">Name</label>
         <input id="name" type="text" pInputText [(ngModel)]="newPerson.name">
       </div>
 
-      <!-- Coordinates -->
       <div class="p-field bottom-border">
         <label for="coordId" class="right-border">Coordinates ID</label>
-        <input id="coordId" type="number" pInputText [(ngModel)]="newPerson.coordinates.id">
+        <input id="coordId" type="number" pInputText [ngModel]="newPerson.coordinates.id"
+               (ngModelChange)="newPerson.coordinates.id = $event">
       </div>
       <div class="p-field bottom-border">
         <label for="coordX" class="right-border">Coordinates X</label>
-        <input id="coordX" type="number" pInputText [(ngModel)]="newPerson.coordinates.x">
+        <input id="coordX" type="number" pInputText [ngModel]="newPerson.coordinates.x"
+               (ngModelChange)="newPerson.coordinates.x = $event">
       </div>
       <div class="p-field bottom-border">
         <label for="coordY" class="right-border">Coordinates Y</label>
-        <input id="coordY" type="number" pInputText [(ngModel)]="newPerson.coordinates.y">
+        <input id="coordY" type="number" pInputText [ngModel]="newPerson.coordinates.y"
+               (ngModelChange)="newPerson.coordinates.y = $event">
       </div>
 
-      <!-- Eye Color -->
       <div class="p-field bottom-border">
         <label for="eyeColor" class="right-border">Eye Color</label>
         <p-select [options]="colors" [(ngModel)]="newPerson.eyeColor" placeholder="Select eye color"
                   appendTo="body"></p-select>
       </div>
 
-      <!-- Hair Color -->
       <div class="p-field bottom-border">
         <label for="hairColor" class="right-border">Hair Color</label>
         <p-select [options]="colors" [(ngModel)]="newPerson.hairColor" placeholder="Select hair color"
@@ -299,34 +302,35 @@
 
       <div class="p-field bottom-border">
         <label for="locId" class="right-border">Location ID</label>
-        <input id="locId" type="number" pInputText [(ngModel)]="newPerson.location.id">
+        <input id="locId" type="number" pInputText [ngModel]="newPerson.location.id"
+               (ngModelChange)="newPerson.location.id = $event">
       </div>
       <div class="p-field bottom-border">
         <label for="locX" class="right-border">Location X</label>
-        <input id="locX" type="number" pInputText [(ngModel)]="newPerson.location.x">
+        <input id="locX" type="number" pInputText [ngModel]="newPerson.location.x"
+               (ngModelChange)="newPerson.location.x = $event">
       </div>
       <div class="p-field bottom-border">
         <label for="locY" class="right-border">Location Y</label>
-        <input id="locY" type="number" pInputText [(ngModel)]="newPerson.location.y">
+        <input id="locY" type="number" pInputText [ngModel]="newPerson.location.y"
+               (ngModelChange)="newPerson.location.y = $event">
       </div>
       <div class="p-field bottom-border">
         <label for="locName" class="right-border">Location Name</label>
-        <input id="locName" type="text" pInputText [(ngModel)]="newPerson.location.name">
+        <input id="locName" type="text" pInputText [ngModel]="newPerson.location.name"
+               (ngModelChange)="newPerson.location.name = $event">
       </div>
 
-      <!-- Height -->
       <div class="p-field bottom-border">
         <label for="height" class="right-border">Height</label>
         <input id="height" type="number" pInputText [(ngModel)]="newPerson.height">
       </div>
 
-      <!-- Weight -->
       <div class="p-field bottom-border">
         <label for="weight" class="right-border">Weight</label>
         <input id="weight" type="number" pInputText [(ngModel)]="newPerson.weight">
       </div>
 
-      <!-- Nationality -->
       <div class="p-field bottom-border">
         <label for="nationality" class="right-border">Nationality</label>
         <p-select [options]="countries" [(ngModel)]="newPerson.nationality" placeholder="Select nationality"
@@ -459,6 +463,50 @@
     </div>
     <ng-template pTemplate="footer">
       <p-button label="Cancel" icon="pi pi-times" (onClick)="displayChooseCoordinates=false"
+                class="p-button-text"></p-button>
+    </ng-template>
+  </p-dialog>
+
+  <!-- Add this dialog at the end of the template, similar to other dialogs -->
+  <p-dialog
+    header="Operations"
+    [(visible)]="displayOperationsDialog"
+    [modal]="true"
+    [closable]="true"
+    [style]="{width: '75vw'}">
+    <div class="data-table">
+      <!-- main-page.component.html (operations table snippet) -->
+      <p-table [value]="operations" [scrollable]="true" [style]="{width:'100%'}" scrollHeight="400px">
+        <ng-template pTemplate="header">
+          <tr>
+            <th style="width: 5%" pSortableColumn="id">ID</th>
+            <th style="width: 15%" pSortableColumn="type">Type</th>
+            <th style="width: 10%" pSortableColumn="status">Status</th>
+            <th style="width: 10%" pSortableColumn="changes">Changes</th>
+            <th style="width: 15%" pSortableColumn="user.username">User</th>
+            <th style="width: 20%" pSortableColumn="created">Created</th>
+            <th style="width: 15%">Download</th>
+          </tr>
+        </ng-template>
+        <ng-template pTemplate="body" let-operation>
+          <tr>
+            <td>{{ operation.id }}</td>
+            <td>{{ operation.type }}</td>
+            <td>{{ operation.status }}</td>
+            <td>{{ operation.changes }}</td>
+            <td>{{ operation.user.username }}</td>
+            <td>{{ operation.created | date:'short' }}</td>
+            <td>
+              <ng-container *ngIf="operation.type === OperationType.FILE_UPLOAD && operation.status === OperationStatus.SUCCESS">
+                <p-button label="Download" (onClick)="downloadFile(operation.objectName)"></p-button>
+              </ng-container>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    </div>
+    <ng-template pTemplate="footer">
+      <p-button label="Close" icon="pi pi-times" (onClick)="displayOperationsDialog=false"
                 class="p-button-text"></p-button>
     </ng-template>
   </p-dialog>

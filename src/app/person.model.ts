@@ -49,3 +49,28 @@ export interface BroadcastMessage {
   state: PersonState;
   person: Person;
 }
+
+export enum OperationStatus {
+  SUCCESS = 'SUCCESS',
+  FAILURE = 'FAILURE'
+}
+
+export enum OperationType {
+  FILE_UPLOAD = 'FILE_UPLOAD'
+}
+
+export interface User {
+  id: number;
+  username: string;
+}
+
+// person.model.ts
+export interface Operation {
+  id: number;
+  type: OperationType;
+  status: OperationStatus;
+  changes: number | null;
+  user: User;
+  created: string;
+  objectName?: string;
+}

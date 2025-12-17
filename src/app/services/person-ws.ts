@@ -37,7 +37,6 @@ export class PersonWs implements OnDestroy {
           this.deleteSubject.next(message.person.id);
         }
       } catch (e) {
-
       }
     }
 

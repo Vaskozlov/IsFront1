@@ -1,7 +1,7 @@
 import {Person} from '../person.model';
 import {PersonWs} from './person-ws';
-import {getPersons} from '../rest/get-persons';
 import {Injectable} from '@angular/core';
+import {ApiService} from './api.service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,7 +9,7 @@ import {Injectable} from '@angular/core';
 export class PersonsStorage {
   public persons: Person[] = new Array<Person>();
 
-  constructor(public personWs: PersonWs) {
+  constructor(public personWs: PersonWs, private apiService: ApiService) {
     this.personWs.updates$.subscribe(p => this.onPersonUpdate(p))
     this.personWs.delete$.subscribe(id => this.onPersonDeleted(id));
 
@@ -17,11 +17,11 @@ export class PersonsStorage {
   }
 
   public fullUpdate() {
-    getPersons().then(persons => {
-      for (const p of persons) {
+    this.apiService.getPersons().then(persons => {
+      for (let p of persons) {
         this.onPersonUpdate(p)
       }
-    })
+    });
   }
 
   public onPersonDeleted(id: Number): void {

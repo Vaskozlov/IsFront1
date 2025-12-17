@@ -37,9 +37,9 @@
           </td>
         </tr>
         <tr>
-          <td>
-            <input type="file" accept=".csv" id="csvUpload" (change)="onCsvSelect($event)" style="display: none;">
-            <p-button label="Upload CSV" (onClick)="triggerCsvUpload()" class="service-button"></p-button>
+          <td class="button-with-tag">
+            <p-fileUpload mode="basic" chooseLabel="Choose CSV File" (onSelect)="onFileSelected($event)" accept=".csv" [auto]="false" class="service-button" />
+            <p-tag *ngIf="selectedFileName" [value]="selectedFileName" severity="info"></p-tag>
           </td>
         </tr>
         <tr>
@@ -497,7 +497,8 @@
             <td>{{ operation.user.username }}</td>
             <td>{{ operation.created | date:'short' }}</td>
             <td>
-              <ng-container *ngIf="operation.type === OperationType.FILE_UPLOAD && operation.status === OperationStatus.SUCCESS">
+              <ng-container
+                *ngIf="operation.type === OperationType.FILE_UPLOAD && operation.status === OperationStatus.SUCCESS">
                 <p-button label="Download" (onClick)="downloadFile(operation.objectName)"></p-button>
               </ng-container>
             </td>

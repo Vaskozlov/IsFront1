@@ -26,3 +26,13 @@
   margin-bottom: 4px;
 }
 
+/* Add to main-page.component.scss or global styles.scss */
+.p-fileupload-basic .p-button {
+  background: var(--p-button-primary-bg);  /* Match your green theme */
+  border: var(--p-button-primary-border);
+  color: var(--p-button-primary-text);
+}
+
+.p-fileupload-basic .p-button:hover {
+  background: var(--p-button-primary-hover-bg);
+}

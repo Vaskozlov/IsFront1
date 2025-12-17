@@ -14,14 +14,13 @@ import {Select} from "primeng/select";
 import {Tag} from "primeng/tag";
 import {InputNumber} from "primeng/inputnumber";
 import {Dialog} from 'primeng/dialog';
-import * as Papa from 'papaparse';
 import {updatePerson} from '../rest/update-persons';
-import {savePerson, savePersons} from '../rest/save-person';
+import {savePerson} from '../rest/save-person';
 import {deletePerson} from '../rest/delete-person';
 import {MessageService} from 'primeng/api';
 import {ToastModule} from 'primeng/toast';
-import {getOperations} from '../rest/get-persons';
-import {apiBaseUrl} from '../rest/query';
+import {ApiService} from '../services/api.service';
+import {FileUpload} from 'primeng/fileupload';
 
 export enum ColumnFilter {
   NONE = "NONE",
@@ -56,7 +55,8 @@ export enum ColumnFilter {
     Tag,
     InputNumber,
     Dialog,
-    ToastModule
+    ToastModule,
+    FileUpload
   ],
   templateUrl: 'main-page.component.html',
   styleUrl: './main-page.component.scss',
@@ -64,6 +64,9 @@ export enum ColumnFilter {
 })
 export class MainPageComponent implements OnInit, AfterViewInit {
   @ViewChild('dt') dt!: Table;
+
+  protected readonly OperationType = OperationType;
+  protected readonly OperationStatus = OperationStatus;
 
   colors = Object.values(Color).map(c => ({label: c, value: c}));
   countries = Object.values(Country).map(c => ({label: c, value: c}));
@@ -83,12 +86,18 @@ export class MainPageComponent implements OnInit, AfterViewInit {
   errorMessageFromServer = ""
   columnFilter = ColumnFilter.NONE
   filterValue = ""
+  private username = 'vaskozlov';
 
   displayOperationsDialog = false;
   operations: Operation[] = [];
+  selectedFileName: string | null = null;
 
-
-  constructor(private router: Router, public personsStorage: PersonsStorage, private cdr: ChangeDetectorRef, private messageService: MessageService) {
+  constructor(
+    private router: Router,
+    public personsStorage: PersonsStorage,
+    private cdr: ChangeDetectorRef,
+    private messageService: MessageService,
+    private apiService: ApiService) {
   }
 
   async ngOnInit() {
@@ -333,112 +342,6 @@ export class MainPageComponent implements OnInit, AfterViewInit {
     })
   }
 
-  triggerCsvUpload() {
-    document.getElementById('csvUpload')?.click();
-  }
-
-  onCsvSelect(event: any) {
-    const file = event.target.files[0];
-    if (file) {
-      this.parseCsv(file)
-        .then((persons: Person[]) => {
-          this.savePersons(persons)
-            .then(r => r.json())
-            .catch(r => this.showErrorNotification(
-              `Failed to save persons`))
-            .then(json => {
-              this.showSuccessNotification(
-                `Successfully added ${json["changes"]} persons`)
-            });
-        })
-        .catch(error => {
-          this.showErrorNotification(
-            `Error parsing CSV: ${error}`)
-        });
-    }
-  }
-
-  private parseCsv(file: File): Promise<Person[]> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e: any) => {
-        const csvText = e.target.result;
-        Papa.parse(csvText, {
-          header: true,
-          skipEmptyLines: true,
-          complete: (results: any) => {
-            try {
-              const persons: Person[] = results.data.map((row: any) => this.mapRowToPerson(row));
-              resolve(persons);
-            } catch (error) {
-              reject(error);
-            }
-          },
-          error: (error: any) => reject(error),
-        });
-      };
-      reader.onerror = (error) => reject(error);
-      reader.readAsText(file);
-    });
-  }
-
-  private mapRowToPerson(row: any): Person {
-    const coordinates = {
-      id: row['coordinates_id'] ? parseInt(row['coordinates_id'], 10) : null,
-      x: parseFloat(row['coordinates_x']),
-      y: parseFloat(row['coordinates_y']),
-    };
-
-    const location = {
-      id: row['location_id'] ? parseInt(row['location_id'], 10) : null,
-      x: parseFloat(row['location_x']),
-      y: parseFloat(row['location_y']),
-      name: row['location_name'],
-    };
-
-    const eyeColor = this.mapToColor(row['eyeColor']);
-    const hairColor = this.mapToColor(row['hairColor']);
-    const nationality = row['nationality'] ? this.mapToCountry(row['nationality']) : undefined;
-
-    return {
-      id: null,
-      name: row['name'],
-      coordinates,
-      creationTime: null,
-      eyeColor,
-      hairColor,
-      location,
-      height: parseFloat(row['height']),
-      weight: parseFloat(row['weight']),
-      nationality,
-    };
-  }
-
-  private mapToColor(value: string): Color {
-    const upperValue = value.toUpperCase();
-    if (Object.values(Color).includes(upperValue as Color)) {
-      return upperValue as Color;
-    }
-    throw new Error(`Invalid Color value: ${value}`);
-  }
-
-  private mapToCountry(value: string): Country {
-    const upperValue = value.toUpperCase();
-    if (Object.values(Country).includes(upperValue as Country)) {
-      return upperValue as Country;
-    }
-    throw new Error(`Invalid Country value: ${value}`);
-  }
-
-  private async savePersons(persons: Person[]) {
-    try {
-      return await savePersons(persons)
-    } catch (error) {
-      this.personsStorage.fullUpdate();
-      throw Error;
-    }
-  }
-
   showSuccessNotification(message: string) {
     this.messageService.add({
       severity: 'success',
@@ -459,7 +362,7 @@ export class MainPageComponent implements OnInit, AfterViewInit {
 
   async showOperations() {
     try {
-      this.operations = await getOperations('vaskozlov');
+      this.operations = await this.apiService.getOperations('vaskozlov');
       this.displayOperationsDialog = true;
     } catch (error) {
       this.showErrorNotification('Failed to load operations');
@@ -472,32 +375,220 @@ export class MainPageComponent implements OnInit, AfterViewInit {
       return;
     }
 
-    fetch(`${apiBaseUrl}/download?objectName=${objectName}`, {
-      method: 'GET',
-      mode: 'cors',
-    })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to download');
-        }
-        return response.blob();
-      })
-      .then(blob => {
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = objectName;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      })
-      .catch(error => {
-        console.error('Download failed', error);
-        this.showErrorNotification('Failed to download file');
-      });
+    this.apiService.downloadFile(objectName).then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = objectName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }).catch(error => {
+      console.error('Download failed', error);
+      this.showErrorNotification('Failed to download file');
+    });
   }
 
-  protected readonly OperationType = OperationType;
-  protected readonly OperationStatus = OperationStatus;
+  async onFileSelected(event: any) {
+    if (!event?.files?.length) return;
+
+    const file: File = event.files[0];
+    this.selectedFileName = file.name;
+
+    try {
+      const content = await this.readFileContent(file);  // Get CSV as string
+      const validationResult = await this.validateCsv(file);  // Still validate using file, but could use content
+      if (!validationResult.valid) {
+        this.showErrorNotification(`Validation failed: ${validationResult.errors.join(', ')}`);
+        this.selectedFileName = null;
+        return;
+      }
+
+      await this.apiService.uploadCsvFile(content, this.username);
+      this.showSuccessNotification('File uploaded successfully');
+      this.personsStorage.fullUpdate();
+    } catch (error) {
+      this.showErrorNotification('Failed to upload file');
+      console.error(error);
+    } finally {
+      this.selectedFileName = null;
+    }
+  }
+
+  private readFileContent(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target?.result as string);
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsText(file);
+    });
+  }
+
+  private parseCsv(content: string): { headers: string[]; rows: string[][]; separator: string } {
+    const lines = content.split('\n').filter(line => line.trim());
+    if (lines.length < 1) {
+      throw new Error('Empty CSV');
+    }
+
+    const firstLine = lines[0];
+    let separator = ',';
+    const commaSplits = firstLine.split(',').length;
+    const semiSplits = firstLine.split(';').length;
+    if (semiSplits > commaSplits) {
+      separator = ';';
+    }
+
+    const headers = firstLine.split(separator).map(h => h.trim());
+    const rows = lines.slice(1).map(line => line.split(separator).map(cell => cell.trim()));
+
+    return {headers, rows, separator};
+  }
+
+  private validateHeaders(headers: string[]): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    const requiredHeaders = [
+      'name',
+      'coordinates_x',
+      'coordinates_y',
+      'eyeColor',
+      'hairColor',
+      'height',
+      'weight',
+      'location_x',
+      'location_y',
+      'location_name'
+    ];  // Removed 'nationality' as it's optional
+
+    for (const req of requiredHeaders) {
+      if (!headers.includes(req)) {
+        errors.push(`Missing header: ${req}`);
+      }
+    }
+
+    return {valid: errors.length === 0, errors};
+  }
+
+  private validateRows(rows: string[][], headers: string[]): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    const colorValues = Object.values(Color);
+    const countryValues = Object.values(Country);
+
+    const hasCoordId = headers.includes('coordinates_id');
+    const hasLocId = headers.includes('location_id');
+    const hasNationality = headers.includes('nationality');
+
+    rows.forEach((row, index) => {
+      if (row.length !== headers.length) {
+        errors.push(`Row ${index + 1} has incorrect number of columns`);
+        return;  // Skip further validation for this row
+      }
+
+      const rowMap: { [key: string]: string } = {};
+      headers.forEach((header, colIndex) => {
+        rowMap[header] = row[colIndex];
+      });
+
+      // Validate name
+      if (!rowMap['name'] || rowMap['name'].trim() === '') {
+        errors.push(`Row ${index + 1}: Name cannot be blank`);
+      }
+
+      // Validate coordinates_x (if required)
+      const coordX = parseInt(rowMap['coordinates_x'], 10);
+      if (isNaN(coordX) || coordX < -367) {
+        errors.push(`Row ${index + 1}: Invalid coordinates_x (must be integer >= -367)`);
+      }
+
+      // Validate coordinates_y
+      const coordY = parseFloat(rowMap['coordinates_y']);
+      if (isNaN(coordY) || coordY > 944) {
+        errors.push(`Row ${index + 1}: Invalid coordinates_y (must be float <= 944)`);
+      }
+
+      // Validate coordinates_id if present
+      if (hasCoordId) {
+        const coordIdStr = rowMap['coordinates_id'];
+        if (coordIdStr && isNaN(parseInt(coordIdStr, 10))) {
+          errors.push(`Row ${index + 1}: Invalid coordinates_id (must be integer or empty)`);
+        }
+      }
+
+      // Validate eyeColor
+      if (!colorValues.includes(rowMap['eyeColor'].toUpperCase() as Color)) {
+        errors.push(`Row ${index + 1}: Invalid eyeColor (must be one of: ${colorValues.join(', ')})`);
+      }
+
+      // Validate hairColor
+      if (!colorValues.includes(rowMap['hairColor'].toUpperCase() as Color)) {
+        errors.push(`Row ${index + 1}: Invalid hairColor (must be one of: ${colorValues.join(', ')})`);
+      }
+
+      // Validate nationality if present and not empty
+      if (hasNationality && rowMap['nationality'] && !countryValues.includes(rowMap['nationality'].toUpperCase() as Country)) {
+        errors.push(`Row ${index + 1}: Invalid nationality (must be one of: ${countryValues.join(', ')})`);
+      }
+
+      // Validate height
+      const height = parseFloat(rowMap['height']);
+      if (isNaN(height) || height <= 0) {
+        errors.push(`Row ${index + 1}: Invalid height (must be positive number)`);
+      }
+
+      // Validate weight
+      const weight = parseFloat(rowMap['weight']);
+      if (isNaN(weight) || weight <= 0) {
+        errors.push(`Row ${index + 1}: Invalid weight (must be positive number)`);
+      }
+
+      // Validate location_x
+      const locX = parseFloat(rowMap['location_x']);
+      if (isNaN(locX) || locX < 0 || locX >= 360) {
+        errors.push(`Row ${index + 1}: Invalid location_x (must be between 0 and 360)`);
+      }
+
+      // Validate location_y
+      const locY = parseFloat(rowMap['location_y']);
+      if (isNaN(locY) || locY < 0 || locY >= 180) {
+        errors.push(`Row ${index + 1}: Invalid location_y (must be between 0 and 180)`);
+      }
+
+      // Validate location_id if present
+      if (hasLocId) {
+        const locIdStr = rowMap['location_id'];
+        if (locIdStr && isNaN(parseInt(locIdStr, 10))) {
+          errors.push(`Row ${index + 1}: Invalid location_id (must be integer or empty)`);
+        }
+      }
+
+      // Validate location_name
+      if (rowMap['location_name'].length > 409) {
+        errors.push(`Row ${index + 1}: Location name too long (max 409 characters)`);
+      }
+    });
+
+    return {valid: errors.length === 0, errors};
+  }
+
+  private async validateCsv(file: File): Promise<{ valid: boolean; errors: string[] }> {
+    try {
+      const content = await this.readFileContent(file);
+      const {headers, rows} = this.parseCsv(content);  // separator not needed further
+
+      const headerValidation = this.validateHeaders(headers);
+      if (!headerValidation.valid) {
+        return headerValidation;
+      }
+
+      const rowsValidation = this.validateRows(rows, headers);
+      if (!rowsValidation.valid) {
+        return rowsValidation;
+      }
+
+      return {valid: true, errors: []};
+    } catch (error) {
+      return {valid: false, errors: ['Failed to process CSV file']};
+    }
+  }
 }
